@@ -1,0 +1,159 @@
+---
+title: "TidyModels"
+author: "Mondjehi Roland"
+date: "2022-11-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(skimr)
+library(GGally)
+library(ggmap)
+```
+
+```{r}
+LINK <- "https://raw.githubusercontent.com/kirenz/datasets/master/housing.csv"
+housing_df <- read_csv(LINK)
+```
+
+```{r}
+head(housing_df, 5)
+```
+
+```{r}
+glimpse(housing_df)
+```
+```{r}
+skim(housing_df)
+```
+```{r}
+housing_df %>% 
+       count(ocean_proximity, sort = TRUE)
+```
+
+```{r}
+ggscatmat(housing_df, columns = 6:9, color = "ocean_proximity", alpha = 0.8)
+```
+
+
+```{r}
+housing_df %>% 
+       ggplot(aes(x = longitude, y = latitude))+
+       geom_point(color = "blue2", alpha = 0.1, )
+```
+
+
+```{r}
+housing_df %>% 
+       ggplot(aes(longitude, latitude))+
+       geom_point(aes(size = population, color = median_house_value),
+                  alpha = 0.4)+
+       scale_colour_gradientn(colours = rev(rainbow(4)))
+```
+```{r}
+qmplot(x = longitude,
+       y = latitude,
+       data = housing_df,
+       geom = "point",
+       color = median_house_value,
+       size = population,
+       alpha = 0.4,
+       zoom = 7)+
+       scale_colour_gradientn(colours = rev(rainbow(4)))
+```
+
+
+
+```{r}
+set.seed(123)
+new_split <- initial_split(housing_df,
+                           prop = 3/4,
+                           strata = median_income,
+                           breaks = 5)
+
+new_train <- training(new_split)
+new_test <- testing(new_split)
+```
+
+```{r}
+
+housing_rec <- 
+       recipe(
+       median_house_value ~ ., data = new_train) %>% 
+       step_novel(all_nominal(), -all_outcomes()) %>% 
+       step_dummy(all_nominal()) %>% 
+       step_zv(all_predictors()) %>% 
+       step_normalize(all_predictors())
+
+housing_rec
+```
+
+
+```{r}
+library(tidymodels)
+
+lm_spec <- linear_reg() %>%
+       set_engine(engine = "lm") %>% 
+       set_mode("regression")
+
+lm_spec
+
+```
+```{r}
+lm_wflow <- 
+       workflow() %>% 
+       add_model(lm_spec) %>% 
+       add_recipe(housing_rec)
+
+lm_wflow
+```
+
+
+
+```{r}
+set.seed(123)
+
+cv_folds <- 
+       vfold_cv(new_train,v = 5, strata = median_income, breaks = 5)
+
+cv_folds$splits
+```
+
+```{r}
+lm_wflow_eval <- 
+       lm_wflow %>% 
+       fit_resamples(median_house_value~., resamples = cv_folds)
+
+lm_wflow_eval %>% 
+       collect_metrics()
+```
+```{r}
+last_fit_lm <- last_fit(lm_wflow,split = new_split)
+last_fit_lm %>% 
+       collect_metrics()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

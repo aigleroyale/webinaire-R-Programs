@@ -1,0 +1,321 @@
+---
+title: "TidyModels2"
+author: "Mondjehi Roland"
+date: "2022-11-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# importation des données
+
+```{r}
+library(tidyverse)
+
+LINK <- "https://raw.githubusercontent.com/kirenz/datasets/master/housing_unclean.csv"
+housing_df <- read_csv(LINK)
+```
+
+# nettoyage des données
+
+```{r}
+library(gt)
+housing_df %>% 
+       slice_head(n = 4) %>% 
+       gt()
+```
+
+```{r}
+library(stringr)
+
+housing_df <- housing_df %>% 
+       mutate(
+             housing_median_age = str_remove_all(housing_median_age, "[years]"),
+             median_house_value = str_remove_all(median_house_value, "[$]")
+       )
+
+
+```
+
+```{r}
+glimpse(housing_df)
+
+```
+
+```{r}
+library(visdat)
+
+vis_dat(housing_df)
+```
+
+
+```{r}
+housing_df %>% 
+       count(ocean_proximity,
+             sort = TRUE)
+```
+
+```{r}
+
+housing_df <- housing_df %>% 
+       mutate(
+              housing_median_age = as.numeric(housing_median_age),
+              median_house_value = as.numeric(median_house_value)
+       )
+
+housing_df <- housing_df %>% 
+       mutate(
+              across(where(is.character), as.factor)
+       )
+
+
+```
+
+
+```{r}
+vis_miss(housing_df)
+```
+
+```{r}
+is.na(housing_df) %>% colSums()
+```
+
+```{r}
+housing_df <- housing_df %>% 
+       mutate(
+              rooms_per_household = total_rooms/households,
+              bedrooms_per_room = total_bedrooms/total_rooms,
+              population_per_household = population/households
+       )
+
+```
+
+```{r}
+housing_df <- housing_df %>% 
+       mutate(
+              price_category = case_when(
+                     median_house_value < 15000 ~ "below",
+                     median_house_value >= 15000 ~ "above"
+              )
+       ) %>% 
+       mutate(price_category = as.factor(price_category)) %>% 
+       select(-median_house_value)
+
+
+```
+
+
+```{r}
+housing_df %>% 
+       count(price_category, name = "districts_total") %>% 
+       mutate(percent = districts_total/sum(districts_total) * 100,
+              percent = round(percent, 2)) %>% 
+       gt() %>% 
+       tab_header(
+              title = "California median house prices",
+              subtitle = "Districts above and below 150.000$"
+       ) %>% 
+       cols_label(
+              price_category = "Price",
+              districts_total = "Districts",
+              percent = "Percent"
+       ) %>% 
+       fmt_number(
+              columns = vars(districts_total),
+              suffixing = TRUE
+       )
+```
+
+```{r}
+skim(housing_df)
+```
+
+```{r}
+library(GGally)
+housing_df %>% 
+       select(
+              housing_median_age,
+              median_income, bedrooms_per_room, rooms_per_household,
+              population_per_household
+       ) %>% 
+       ggscatmat(alpha = 0.2)
+```
+
+
+```{r}
+housing_df %>% 
+       select(
+              housing_median_age,
+              median_income, bedrooms_per_room, rooms_per_household,
+              population_per_household, ocean_proximity, price_category
+       ) %>% 
+       ggpairs()
+```
+
+# fractionnement des données
+```{r}
+set.seed(123)
+
+data_split <- initial_split(housing_df,
+                            prop = 3/4,
+                            strata = price_category)
+
+train_data <- training(data_split)
+test_data <- training(data_split)
+
+
+```
+
+# Preparation des données
+```{r}
+housing_df_new <- 
+       housing_df %>% 
+       select(
+              longitude, latitude,
+              price_category,
+              median_income,
+              ocean_proximity,
+              bedrooms_per_room,
+              rooms_per_household,
+              population_per_household
+       )
+
+glimpse(housing_df_new)
+```
+
+```{r}
+set.seed(123)
+
+data_split <- initial_split(housing_df_new, # updated data
+                           prop = 3/4, 
+                           strata = price_category)
+
+train_data <- training(data_split) 
+test_data <- testing(data_split)
+```
+
+
+```{r}
+housing_rec <- 
+       recipe(price_category ~ .,
+              data = train_data) %>% 
+       update_role(longitude, latitude, new_role = "ID") %>% 
+       step_log(
+              median_income,
+              bedrooms_per_room,
+              rooms_per_household,
+              population_per_household
+       ) %>%
+       step_naomit(everything(), skip = TRUE) %>% 
+       step_novel(all_nominal(), -all_outcomes()) %>% 
+       step_normalize(all_numeric(), -all_outcomes(),
+                      -longitude, -latitude) %>% 
+       step_dummy(all_nominal(), -all_outcomes()) %>% 
+       step_zv(all_numeric(), -all_outcomes()) %>% 
+       step_corr(all_predictors(), threshold = 0.7, method="spearman")
+       
+```
+
+```{r}
+summary(housing_rec)
+```
+
+```{r}
+prepped_data <-
+       housing_rec %>% 
+       prep() %>% 
+       juice()
+
+prepped_data
+```
+
+
+```{r}
+set.seed(100)
+cv_folds <- 
+       vfold_cv(train_data,
+                v = 5,
+                strata = price_category)
+```
+
+# Modelisation
+
+```{r}
+log_spec <- logistic_reg() %>% 
+            set_engine(engine = "glm") %>% 
+            set_mode("classification")
+
+log_spec
+```
+
+```{r}
+library(ranger)
+
+rf_spec <- rand_forest() %>% 
+       set_engine(engine = "ranger", importance = "impurity") %>% 
+       set_mode("classification")
+
+```
+
+```{r}
+library(xgboost)
+
+xgb_spec <- 
+       boost_tree() %>% 
+       set_engine("xgboost") %>%
+       set_mode("classification")
+
+
+knn_spec <- 
+  nearest_neighbor(neighbors = 4) %>% # we can adjust the number of neighbors 
+  set_engine("kknn") %>% 
+  set_mode("classification")
+       
+```
+
+```{r}
+
+nnet_spec <- 
+       mlp() %>% 
+       set_mode("classification") %>% 
+       set_engine("keras", verbose = 0)
+
+
+knn_wflow <-
+ workflow() %>%
+ add_recipe(housing_rec) %>% 
+ add_model(knn_spec)
+
+```
+
+# Creer des workflows
+
+```{r}
+
+log_wflow <- workflow() %>% 
+             add_recipe(housing_rec) %>% 
+             add_model(log_spec)
+
+log_wflow
+       
+```
+
+```{r}
+rf_wfkow <- 
+       workflow() %>% 
+       add_recipe(housing_rec) %>% 
+       add_model(knn_spec)
+
+nnet_wflow <-
+       workflow() %>%
+       add_recipe(housing_rec) %>% 
+       add_model(nnet_spec)
+
+
+
+
+```
+
+

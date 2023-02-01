@@ -1,0 +1,49 @@
+---
+title: "FirstMK"
+author: "Mondjehi Roland"
+date: "15/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pays <- c("B", "DK", "D", "GR", "E", "F", "IRL", "I", "L", "NL", "P", "UK")
+x <- c(16.8, 21.3, 18.7, 5.9, 11.4, 17.8, 10.9, 16.6, 21.0, 16.4, 7.8, 14.0)
+y <- c(2.7, 5.7, 3.5, 22.2, 10.9, 6.0, 14.0, 8.5, 3.5, 4.3, 17.4, 2.3)
+
+agri <- data.frame(pays = pays, x = x, y = y)
+agri
+
+km <-kmeans(x = agri[,c(2,3)], centers = 2)
+km
+
+s.class(agri, as.factor(km$cluster))
+
+cluster::clusplot(agri, as.factor(km$cluster))
+
+
+```
+
+```{r}
+library(cluster)
+pam(agri, 2)
+plot(pam(agri,2))
+
+```
+
+
+```{r}
+install.packages("ade4")
+library(ade4)
+
+s.class(agri[,c(2,3)], as.factor(km$cluster))
+
+s.label(agri, boxes = F)
+s.label(km$centers, add.plot=TRUE)
+
+fann
+```
+

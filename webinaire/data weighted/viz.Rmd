@@ -1,0 +1,719 @@
+---
+title: "Visualisation des données"
+author: "Mondjehi Roland"
+date: "23/02/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE)
+```
+
+```{r }
+# Importation des librairie
+library(ggplot2)
+library(ggalt)
+library(ggExtra)
+library(ggcorrplot)
+library(plotly)
+library(quantmod)
+library(ggthemes)
+library(waffle)
+library(highcharter)
+library(tidyverse)
+library(ggfortify)
+```
+
+
+# Nuages de points
+```{r}
+theme_set(theme_bw())
+
+data("midwest", package = "ggplot2")
+
+head(midwest)
+
+```
+
+```{r}
+gg <- ggplot(data = midwest, aes(x = area, y = poptotal))+
+       geom_point()
+
+gg
+```
+```{r}
+gg <- ggplot(data = midwest, aes(x = area, y = poptotal))+
+       geom_point(aes(col = state, size = popdensity))
+
+gg
+```
+
+```{r}
+gg <- ggplot(data = midwest, aes(x = area, y = poptotal)) +
+       geom_point(aes(col = state, size = popdensity)) +
+       geom_smooth(method = "lm", se = T)
+
+gg
+```
+
+```{r}
+gg <- ggplot(data = midwest, aes(x = area, y = poptotal)) +
+       geom_point(aes(col = state, size = popdensity)) +
+       geom_smooth(method = "lm", se = T) +
+       xlim(c(0, 0.1)) +
+       ylim(c(0, 500000)) +
+       labs(subtitle = "surface vs pop", 
+            y = "population",
+            x = "surface",
+            title = "Nuage de points de la population en fonction de la surface du comté",
+            caption = "Source : midwest dataset")
+
+gg
+```
+
+```{r}
+ggplotly(gg)
+```
+
+
+
+```{r}
+# 
+
+midwest_select <- midwest[midwest$poptotal > 350000 & 
+                          midwest$poptotal <= 500000 & 
+                          midwest$area >0.01 & 
+                          midwest$area < 0.1, ]
+midwest_select
+```
+
+```{r}
+gg2 <- ggplot(data = midwest, aes(x = area, y = poptotal)) +
+       geom_point(aes(col = state, size = popdensity)) +
+       geom_smooth(method = "lm", se = T) +
+       geom_encircle(aes(x = area, y = poptotal), # encercler une partie des donnnées
+                     data = midwest_select, 
+                     col = "red", 
+                     expand = 0.08,
+                     size = 2) +
+       xlim(c(0, 0.1)) +
+       ylim(c(0, 500000)) +
+       labs(subtitle = "surface vs pop", 
+            y = "population",
+            x = "surface",
+            title = "Nuage de points de la population en fonction de la surface du comté",
+            caption = "Source : midwest dataset")
+
+gg2
+```
+
+
+# Jitter plot :  Nuage de points spécial
+
+```{r}
+data("mpg")
+head(mpg)
+```
+
+```{r}
+
+g <- ggplot(data = mpg, aes(x = cty, y = hwy))
+
+g + geom_point() +
+    geom_smooth(method = "lm") +
+       labs(subtitle = "City vs Hwy",
+            title = "Nuage de points qui se chevauchent",
+            caption = "Source : mpg dataset")
+
+
+```
+
+
+```{r}
+# Les points ne se chevauchent plus
+g <- g + geom_jitter(width = 0.5,
+                size = 1) +
+    geom_smooth(method = "lm") + 
+       labs(subtitle = "City vs Hwy",
+            title = "Kilométrage autoroute en fonction de kilométrage ville",
+            caption = "Source : mpg dataset")
+```
+
+```{r}
+ggplotly(g)
+```
+
+# Graphiques de décomptes (*counts charts*)
+
+```{r}
+g <- ggplot(mpg, aes(cty, hwy))
+
+g <- g + geom_count(col = 'tomato3', show.legend = F) + 
+       labs(subtitle = "City vs Hwy",
+            title = "Kilométrage autoroute en fonction de kilométrage ville",
+            caption = "Source : mpg dataset")
+g
+```
+
+```{r}
+ggplotly(g)
+```
+
+# Graphiques à bulles (*Bubble plot*)
+
+```{r}
+mpg_select <- mpg[mpg$manufacturer %in% c("audi", "ford", "honda", "hyundai"),]
+print(unique(mpg_select$manufacturer))
+head(mpg_select)
+```
+
+
+```{r}
+g <- ggplot(mpg_select, aes(displ, cty)) +
+       labs(subtitle = "City vs Hwy",
+            title = "Kilométrage autoroute en fonction de kilométrage ville",
+            caption = "Source : mpg dataset")
+
+g <- g + geom_jitter(aes(col = manufacturer, size = hwy)) +
+       geom_smooth(aes(col = manufacturer, method = "lm", se = F))
+g
+
+```
+
+
+
+```{r}
+ggplotly(g)
+```
+
+
+# Histogramme marginal
+
+```{r}
+
+mp_select <- mpg[mpg$hwy >= 35 & mpg$cty > 27, ]
+
+g <- ggplot(mpg, aes(cty, hwy)) +
+     geom_count(col = "tomato3", show.legend = F) +
+     geom_smooth(method = "lm", se = F)
+
+ggMarginal(g, type = "histogram", fill = "transparent")
+ggMarginal(g, type = "boxplot", fill = "transparent")
+ggMarginal(g, type = "density", fill = "transparent")
+
+```
+
+
+# Matrice de correlation
+```{r}
+data("mtcars")
+str(mtcars)
+```
+
+
+```{r}
+corr <- round(cor(mtcars), 2)
+corr
+```
+
+```{r}
+cor_plot <- ggcorrplot(corr = corr,
+                       hc.order = TRUE,
+                       lab = TRUE,
+                       type = "lower",
+                       lab_size = 3,
+                       colors = c("red", "white", "green"),
+                       title = "Matrice de correlation",
+                       ggtheme = theme_clean())
+cor_plot
+```
+```{r}
+ggplotly(cor_plot)
+```
+
+
+# Section 3
+
+## Diagramme à barres divergentes
+
+```{r}
+head(mtcars)
+```
+
+```{r}
+mtcars$car_name <- rownames(mtcars)
+head(mtcars)
+```
+
+```{r}
+mtcars$mpg_z <- round((mtcars$mpg - mean(mtcars$mpg)) / sd(mtcars$mpg), 2)
+```
+
+```{r}
+mtcars$mpg_type <- ifelse(mtcars$mpg_z < 0, "below", "above")
+
+```
+
+```{r}
+mtcars <- mtcars[order(mtcars$mpg_z),]
+
+mtcars$car_name <- factor(mtcars$car_name, levels = mtcars$car_name)
+```
+
+
+```{r}
+bar_div <- ggplot(mtcars, aes(x = car_name, y = mpg_z)) +
+           geom_bar(stat = "identity", aes(fill = mpg_type), width = 0.5) +
+           scale_fill_manual(name ="kilometrage",
+                             labels = c("above average", "below average"),
+                             values = c("above" = "green", "below" = "red")) +
+           labs(subtitle = "kilometrage normalisé",
+                title = "Diagramme à barres divergences") +
+           coord_flip()
+
+bar_div
+```
+```{r}
+ggplotly(bar_div)
+```
+
+## Diagramme divergentes modernes
+```{r}
+bdm <- ggplot(mtcars, aes(car_name, mpg_z)) +
+       geom_point(stat = "identity", fill = "black", size = 6) +
+       geom_segment(aes(y = 0,
+                        x = car_name,
+                        yend = mpg_z,
+                        xend = car_name),
+                    color = "black") + 
+       #geom_label()
+       geom_text(color = "white", size = 2, aes(label = mpg_z)) +
+       labs(title = "Diagramme à barres divergentes modernes",
+            subtitle = "Kilometrage") + 
+       ylim(-2.5, 2.5) +
+       coord_flip()
+
+bdm
+```
+
+## Graphiques à barres ordonnées
+
+```{r}
+cty_mpg <- aggregate(mpg$cty, by = list(mpg$manufacturer), FUN = mean)
+head(cty_mpg)
+```
+
+```{r}
+colnames(cty_mpg) <- c("make", "mileage")
+cty_mpg <- cty_mpg[order(cty_mpg$mileage),]
+head(cty_mpg)
+```
+
+
+
+
+```{r}
+cty_mpg$make <- factor(cty_mpg$make, levels = cty_mpg$make)
+```
+
+```{r}
+
+gbo <- ggplot(cty_mpg, aes(x = make, y = mileage)) +
+       geom_bar(stat = "identity", width = 0.5,  fill = "red") +
+       labs(title = "Kilometrage moyen", caption = "Source : mpg_dataset") +
+       coord_flip()
+
+gbo
+```
+
+```{r}
+ggplotly(gbo)
+```
+
+
+# Graphiques à barres minces
+```{r}
+dbarm <- ggplot(cty_mpg, aes(x=make, y = mileage)) +
+         geom_point(size = 3) +
+         geom_segment(aes(x = make,
+                          xend = make,
+                          y=0,
+                          yend = mileage)) +
+        labs(title = "Diagramme Mince", caption = "Source : Mpg dataset") + 
+        coord_flip()
+
+dbarm
+
+```
+
+```{r}
+ggplotly(dbarm)
+```
+
+
+## Diagramme à points (*Dot plot*)
+
+```{r}
+dot_plot <- ggplot(cty_mpg, aes(x=make, y = mileage)) +
+         geom_point(color = "red", size = 3) +
+         geom_segment(aes(x = make,
+                          xend = make,
+                          y = min(mileage),
+                          yend = max(mileage)),
+                      linetype = "dashed",
+                      size = 4) +
+        labs(title = "Diagramme à points", caption = "Source : Mpg dataset") + 
+        coord_flip()
+
+dot_plot
+```
+```{r}
+ggplotly(dot_plot)
+```
+
+# Section 5
+
+## Histogramme
+
+```{r}
+#head(mpg)
+
+ho <- ggplot(mpg, aes(displ)) +
+      geom_histogram()
+ho
+```
+
+
+```{r}
+ho <- ggplot(mpg, aes(displ)) +
+      geom_histogram(bins = 10)
+ho
+
+
+```
+
+```{r}
+ggplotly(ho)
+```
+
+
+```{r}
+head(mpg)
+```
+
+```{r}
+h1 <- ggplot(mpg, aes(displ)) +
+      scale_fill_brewer(palette = "spectral") +
+      geom_histogram(aes(fill = class),
+                     binwidth = 0.1,
+                     col = "black",
+                     size = 0.1) +
+      labs(title = "Histogramme avec regroup",
+           subtitle = "Capacité des moteurs",
+           caption = "Source : mpg dataset") 
+h1
+```
+
+
+```{r}
+h2 <- ggplot(mpg, aes(displ)) +
+      scale_fill_brewer(palette = "spectral") +
+      geom_histogram(aes(fill = class),
+                     binwidth = 0.1,
+                     col = "black",
+                     size = 0.1,
+                     bins = 5) +
+      labs(title = "Histogramme avec regroup",
+           subtitle = "Capacité des moteurs",
+           caption = "Source : mpg dataset") 
+h2
+```
+
+
+
+```{r}
+ggplotly(h2)
+```
+
+```{r}
+hc <- ggplot(mpg, aes(manufacturer)) +
+       geom_bar(aes(fill = class)) +
+       labs(title = "Concessionnaire par voitures") +
+       coord_flip()
+hc
+```
+
+```{r}
+ggplotly(hc)
+```
+
+## Graphique de densité
+
+```{r}
+density_plot <- ggplot(mpg, aes(cty)) +
+                geom_density()
+
+density_plot
+```
+
+```{r}
+density_plot_discret <- ggplot(mpg, aes(cty)) +
+                geom_density(aes(fill = factor(cyl)), alpha = 1) + 
+                labs(title = "Kilometrage en ville",
+                     subtitle = "Voitures",
+                     caption = "Source : mpg dataset",
+                     fill = "Nombre de cylindres")
+
+density_plot_discret
+```
+
+```{r}
+ggplotly(density_plot_discret)
+```
+
+
+## Boites à moustaches
+
+```{r}
+boxplot <- ggplot(mpg, aes(y = cty)) +
+           geom_boxplot()
+boxplot
+```
+
+
+```{r}
+boxplot2 <- ggplot(mpg, aes(x = class, y = cty, fill = factor(class))) +
+           geom_boxplot() +
+       labs(title = "Kilometrage en voitures",
+                     subtitle = "Voitures",
+                     caption = "Source : mpg dataset")
+boxplot2
+```
+```{r}
+ggplotly(boxplot2)
+```
+
+
+## Diagramme à points + Boîte à moustache
+```{r}
+dot_box <- ggplot(mpg, aes(manufacturer, cty)) +
+           geom_boxplot() +
+           geom_dotplot(fill = "red", binaxis = "y", dotsize = 0.5, stackdir = "center")
+dot_box
+```
+
+## Boîtes à moustâches de tufte
+```{r}
+t_box <- ggplot(mpg, aes(manufacturer, cty)) +
+         geom_tufteboxplot() +
+       coord_flip()
+t_box
+```
+
+## Graphique de violon
+```{r}
+violon_plot <- ggplot(mpg, aes(x = class, y = cty, fill = factor(class))) +
+           geom_violin() +
+       labs(title = "Kilometrage en voitures",
+                     subtitle = "Voitures",
+                     caption = "Source : mpg dataset",
+                     fill = "Type de voitures")
+violon_plot
+```
+```{r}
+ggplotly(violon_plot)
+```
+
+# Section 6
+## Graphique de composition
+## Graphique en gaufre
+
+```{r}
+parts <- c(80, 30, 20, 10)
+
+gauffre <- waffle(parts, rows = 8, )
+gauffre
+```
+
+## Diagramme circulaire
+
+```{r}
+df <- as.data.frame(table(mpg$class))
+colnames(df) <- c("class", "freq")
+
+
+```
+
+
+```{r}
+pie <- ggplot(df, aes(x = "", y=freq, fill = factor(class))) +
+       geom_bar(stat = "identity") +
+       coord_polar(theta = "y", start = 0) +
+       labs(fill = "legende")
+pie
+```
+
+## Tree map
+
+```{r}
+summary_tab <- mpg %>% 
+       group_by(manufacturer) %>% 
+       summarise(
+              nb_car = n(),
+              nb_mod = length(unique(model))
+       ) %>% 
+       arrange(-nb_car, -nb_mod)
+
+summary_tab
+```
+
+```{r}
+tree_map <- summary_tab %>% 
+       hchart(
+              "treemap",
+              hcaes(x = manufacturer, value = nb_car, color = nb_mod)
+       )
+tree_map
+```
+
+
+
+## Graphiques d'une serie temporelle
+
+```{r}
+head(AirPassengers)
+```
+
+```{r}
+class(AirPassengers)
+```
+
+```{r}
+autoplot(AirPassengers) +
+       labs(title = "Evolution du nb T de P")
+```
+
+## Serie temporelle à partir d'un dataframe
+```{r}
+head(economics)
+```
+
+```{r}
+ts_plot <- ggplot(economics, aes(x = date)) +
+           geom_line(aes(y = uempmed)) +
+           labs(title = "Evol. Series",
+                y = "rendement")
+ts_plot
+```
+```{r}
+ggplotly(ts_plot)
+```
+
+
+
+## Graphique en aire
+
+
+```{r}
+data("uspopage")
+```
+
+```{r} 
+stack_air <- ggplot(uspopage, aes(Year, y = Thousands, fill = AgeGroup)) +
+             geom_area()
+stack_air
+```
+```{r}
+ggplotly(stack_air)
+```
+
+
+
+
+# Graphique de clustering
+```{r}
+df <- df[c(1,2,3,4)]
+head(df)
+```
+
+
+```{r}
+pca_mod <- prcomp(df)
+pca_mod
+```
+
+```{r}
+df_pc <- data.frame(pca_mod$x, species = iris$Species)
+df_pc
+```
+
+```{r}
+df_pc_vir <- df_pc[df_pc$species == "virginica", ]
+df_pc_set <- df_pc[df_pc$species == "setosa", ]
+df_pc_ver <- df_pc[df_pc$species == "versicolor", ]
+```
+```{r}
+theme_set(theme_bw())
+
+cluster <- ggplot(df_pc, aes(PC1, PC2, col = species)) +
+           geom_point(aes(shape = species), size = 2) +
+           labs(title = "cluster des datas") +
+           geom_encircle(data = df_pc_vir, aes(PC1, PC2)) +
+           geom_encircle(data = df_pc_set, aes(PC1, PC2)) +
+           geom_encircle(data = df_pc_ver, aes(PC1, PC2))
+cluster
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

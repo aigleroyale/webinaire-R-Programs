@@ -1,0 +1,90 @@
+---
+title: "TRAJECTOIRES"
+author: "Roland MONDJEHI"
+date: "08/02/2022"
+output:
+  html_document: 
+    toc: yes
+    fig_width: 8
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(labelled)
+library(questionr)
+library(gtsummary)
+
+```
+
+
+```{r}
+load("care_trajectories.RData")
+care_trajectories <- as_tibble(care_trajectories)
+```
+## Prémière description des données
+
+```{r}
+care_trajectories %>% 
+  unlabelled() %>%
+  tbl_summary()
+       
+```
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

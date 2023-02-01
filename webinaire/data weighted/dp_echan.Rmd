@@ -1,0 +1,115 @@
+---
+title: "Données pondées et plan d'échantillonage"
+author: "Mondjehi Roland"
+date: "10/02/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chargement des librairies
+
+```{r}
+library(tidyverse)
+library(questionr)
+library(labelled)
+library(survey)
+
+data("hdv2003")
+```
+
+
+# Simulation des strates et des grappes
+```{r }
+hdv2003$grappes <- rep.int(1:25, times=80)
+hdv2003 <- hdv2003 %>% 
+       arrange(grappes)
+
+
+hdv2003$strate <- "a"
+hdv2003$strate[801:1200] <- "b"
+hdv2003$strate[1201:2000] <- "c"
+
+
+```
+
+# Definir notre plan d'échantillonage
+```{r}
+# Enquêtes simples
+dp <- svydesign(ids = ~ 1, weights = ~poids, data = hdv2003)
+
+# Enquêtes stratifiées
+dp_strates <- svydesign(ids = ~ 1, weights = ~poids, data = hdv2003, strata = ~strate)
+
+
+# Enquêtes grappes
+dp_grappes <- svydesign(ids = ~ grappes, weights = ~poids, data = hdv2003)
+
+# Echantillonage à plusieurs dégrés
+#ids = ~var1 + var2
+
+# Grappes et stractifiées
+
+dp_strates_grappes <- svydesign(ids = ~ grappes, weights = ~poids, data = hdv2003, strata = ~strate)
+
+```
+
+
+
+```{r}
+
+# Conseil essentiel
+# Faites toutes les recodifications avant de redéfinir le plan de sondage
+# Si on a besoin d'un sous-échantillon
+# puis appliquer la fonction subset
+
+dp_femmes <- subset(dp, sexe == "Femme")
+
+# Si on veut récuperer les poids
+poids <- weights(dp_strates)
+```
+
+# Tableau croisé et un test du Chi²
+```{r}
+
+#tab <- xtabs(poids~ sexe + cuisine, data = hdv2003)
+#rprop(tab)
+
+#chisq.test(tab) # bad !!!
+
+tab <- svytable(~ sexe + cuisine, design = dp)
+rprop(tab)
+svychisq(~sexe + cuisine, design = dp)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

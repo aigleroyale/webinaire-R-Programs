@@ -1,0 +1,96 @@
+---
+title: "Mon premier super rapport dynamique"
+author: "Mondjehi Roland"
+date: "09/02/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Un gros titre
+
+## 1.1 Un plus petit titre
+
+### 1.1.1 Un titre encore plus petit
+
+Pour faire une liste:
+
+1.  premier point
+2.  deuxième point
+
+Pour mettre des puces:
+
+-   premier élément
+
+    -   avec son premier sous élément
+    -   avec son deuxieme sous élément
+
+-   deuxième élément
+
+    -   avec ça
+    -   et ça
+
+Le chiffre **trois** est en `gras` et le chiffre *deux* est en `italique`.
+
+Ici le code et le résultat sont affichés
+
+```{r, echo=TRUE}
+summary(cars)
+```
+
+Ici le code n'est pas affiché masis le résultat l'est
+
+```{r, echo=FALSE}
+summary(cars)
+```
+
+Pour supprimer le résultat du code :
+
+```{r, echo=FALSE, results='hide'}
+summary(cars)
+```
+
+Pour gérer la taille des figures:
+
+```{r, fig.height=3, fig.width=3}
+plot(mtcars$mpg, mtcars$wt, xlab = "MPG", ylab = "WT")
+```
+
+
+```{r, fig.height=3, fig.width=6}
+plot(mtcars$mpg, mtcars$wt, xlab = "MPG", ylab = "WT")
+```
+
+Pour inserer une image:
+
+
+<center>
+![](img1.jpg)
+</center>
+
+
+```{r}
+library(knitr)
+kable(head(iris)) 
+```
+
+Pour inserer un lien hypertexte:  l'adresse de mon blog est : <https://mondrolan.com>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
